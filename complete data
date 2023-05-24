@@ -1,0 +1,36 @@
+# Load required packages
+library(readxl)
+library(zoo)
+
+# Set the path to your Excel file
+excel_file <- "path/to/your/excel/file.xlsx"
+
+# Read the Excel file
+data <- read_excel(excel_file)
+
+# Convert date column to Date format
+data$date <- as.Date(data$date)
+
+# Sort the data by date in ascending order
+data <- data[order(data$date), ]
+
+# Create a sequence of dates from the minimum to the maximum date in the data
+date_range <- seq(min(data$date), max(data$date), by = "day")
+
+# Create a complete dataset with all dates in the range
+complete_data <- data.frame(date = date_range)
+
+# Merge complete dataset with original data using a left join
+complete_data <- merge(complete_data, data, by = "date", all.x = TRUE)
+
+# Replace missing NAV values with the average of the three preceding days
+complete_data$NAV <- rollapplyr(complete_data$NAV, width = 4, FUN = function(x) {
+  if (any(is.na(x))) {
+    na_index <- which(is.na(x))
+    x[na_index] <- mean(x[(na_index-3):(na_index-1)], na.rm = TRUE)
+  }
+  x
+}, fill = NA, align = "right")
+
+# Print the complete dataset
+print(complete_data)
